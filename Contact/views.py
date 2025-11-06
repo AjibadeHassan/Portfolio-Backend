@@ -1,26 +1,48 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from .serializers import ContactMessageSerializer
-from .models import ContactMessage
-from .tasks import send_contact_email  # will implement for celery
-# if not using celery you can call send_contact_email.sync_send(...)
+import json
+import os
+from dotenv import load_dotenv
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
-class ContactCreateView(APIView):
-    def post(self, request):
-        serializer = ContactMessageSerializer(data=request.data)
-        if serializer.is_valid():
-            msg = serializer.save()
-            # send email in background (Celery)
-            try:
-                send_contact_email.delay(msg.id)
-            except Exception:
-                # fallback: call synchronous function (if you prefer)
-                from .emails import sync_send_contact_email
-                try:
-                    sync_send_contact_email(msg.id)
-                except Exception as e:
-                    msg.error = str(e)
-                    msg.save()
-            return Response({'detail': 'Message received'}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+
+load_dotenv()
+
+@csrf_exempt
+def contact_message(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+
+        name = data.get("name")
+        email = data.get("email")
+        message = data.get("message")
+
+        configuration = sib_api_v3_sdk.Configuration()
+        configuration.api_key['api-key'] = os.getenv("BREVO_API_KEY")
+
+        api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
+            sib_api_v3_sdk.ApiClient(configuration)
+        )
+
+        email_data = sib_api_v3_sdk.SendSmtpEmail(
+            to=[{"email": os.getenv("TO_EMAIL")}],
+            sender={"email": email, "name": name},
+            subject=f"New Portfolio Message from {name}",
+            html_content=f"""
+                <h3>New message from your portfolio</h3>
+                <p><b>Name:</b> {name}</p>
+                <p><b>Email:</b> {email}</p>
+                <p><b>Message:</b><br>{message}</p>
+            """
+        )
+
+        try:
+            api_instance.send_transac_email(email_data)
+            return JsonResponse({"status": "success"}, status=200)
+
+        except ApiException as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+    return JsonResponse({"error": "Invalid request method"}, status=400)
+
