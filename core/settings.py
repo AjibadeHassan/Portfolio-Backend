@@ -31,7 +31,12 @@ SECRET_KEY = 'django-insecure-b**(9vp0+of!@62@i@yr2903p_o_+1cezj9a)p!@=24e-s(1dj
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "hassan-ajibade-portfolio.onrender.com",
+]
+
 
 CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = CELERY_BROKER_URL
