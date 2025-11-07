@@ -26,16 +26,17 @@ def contact_message(request):
         )
 
         email_data = sib_api_v3_sdk.SendSmtpEmail(
-            to=[{"email": os.getenv("TO_EMAIL")}],
-            sender={"email": email, "name": name},
-            subject=f"New Portfolio Message from {name}",
-            html_content=f"""
-                <h3>New message from your portfolio</h3>
-                <p><b>Name:</b> {name}</p>
-                <p><b>Email:</b> {email}</p>
-                <p><b>Message:</b><br>{message}</p>
-            """
-        )
+             to=[{"email": os.getenv("TO_EMAIL")}],
+             sender={"email": "noreply@brevo.com", "name": "Portfolio Contact Form"},
+             reply_to={"email": email, "name": name},  # ← This allows you to click "Reply" to respond to the sender
+             subject=f"New Portfolio Message from {name}",
+             html_content=f"""
+                 <h3>New message from your portfolio</h3>
+                 <p><b>Name:</b> {name}</p>
+                 <p><b>Email:</b> {email}</p>
+                 <p><b>Message:</b><br>{message}</p>
+             """
+)
 
         try:
             api_instance.send_transac_email(email_data)
